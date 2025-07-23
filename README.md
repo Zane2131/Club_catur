@@ -1,10 +1,10 @@
-# UAS Pemrograman Web
+# Club Catur
 
 Repositori ini berisi hasil pengerjaan UAS Pemrograman Web oleh:
 
 - **Nama:** Naufal Gyimnastiar  
 - **NIM:** 20230901136  
-- **UAS:** Pemograman Web
+- **UAS:** Pemrograman Web
 
 ## Isi File
 
