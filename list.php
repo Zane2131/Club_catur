@@ -28,6 +28,7 @@ $result = $conn->query("SELECT * FROM pendaftar ORDER BY id ASC");
                                     <th>Fakultas</th>
                                     <th>Email</th>
                                     <th>Alasan Bergabung</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -39,6 +40,10 @@ $result = $conn->query("SELECT * FROM pendaftar ORDER BY id ASC");
                                         <td><?= htmlspecialchars($row['fakultas']) ?></td>
                                         <td><?= htmlspecialchars($row['email']) ?></td>
                                         <td><?= htmlspecialchars($row['alasan']) ?></td>
+                                        <td>
+                                            <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-warning">Edit</a>
+                                            <a href="delete.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin hapus?')">Hapus</a>
+                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             </tbody>

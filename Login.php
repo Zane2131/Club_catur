@@ -5,7 +5,12 @@ require 'koneksi.php';
 $error = '';
 
 if (isset($_SESSION['username'])) {
-    header("Location: index.php");
+    // Redirect berdasarkan role
+    if ($_SESSION['role'] === 'admin') {
+        header("Location: admin.php");
+    } else {
+        header("Location: index.php");
+    }
     exit();
 }
 
@@ -13,31 +18,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    $query = mysqli_prepare($koneksi, "SELECT user, password FROM users WHERE username = ?");
-    if (!$query) {
-        die("Query error: " . mysqli_error($koneksi));
-    }
+    // Cek di tabel admin dulu
+    $query_admin = mysqli_prepare($koneksi, "SELECT nama_admin, password FROM admin WHERE username = ?");
+    if ($query_admin) {
+        mysqli_stmt_bind_param($query_admin, "s", $username);
+        mysqli_stmt_execute($query_admin);
+        mysqli_stmt_bind_result($query_admin, $nama_admin, $hashed_password_admin);
 
-    mysqli_stmt_bind_param($query, "s", $username);
-    mysqli_stmt_execute($query);
-    mysqli_stmt_bind_result($query, $user, $hashed_password);
-
-    if (mysqli_stmt_fetch($query)) {
-        if (password_verify($password, $hashed_password)) {
-            $_SESSION["username"] = $username;
-            $_SESSION["user"] = $user; // ← simpan nama lengkap
-            header("Location: index.php");
-            exit();
-        } else {
-            $error = "Password salah!";
+        if (mysqli_stmt_fetch($query_admin)) {
+            if (password_verify($password, $hashed_password_admin)) {
+                $_SESSION["username"] = $username;
+                $_SESSION["user"] = $nama_admin;
+                $_SESSION["role"] = "admin";
+                header("Location: admin.php");
+                exit();
+            } else {
+                $error = "Password salah!";
+            }
         }
-    } else {
-        $error = "Username tidak ditemukan!";
+        mysqli_stmt_close($query_admin);
     }
 
-    mysqli_stmt_close($query);
+    // Jika tidak ditemukan di admin, cek di users
+    $query_user = mysqli_prepare($koneksi, "SELECT user, password FROM users WHERE username = ?");
+    if ($query_user) {
+        mysqli_stmt_bind_param($query_user, "s", $username);
+        mysqli_stmt_execute($query_user);
+        mysqli_stmt_bind_result($query_user, $user, $hashed_password);
+
+        if (mysqli_stmt_fetch($query_user)) {
+            if (password_verify($password, $hashed_password)) {
+                $_SESSION["username"] = $username;
+                $_SESSION["user"] = $user;
+                $_SESSION["role"] = "user";
+                header("Location: index.php");
+                exit();
+            } else {
+                $error = "Password salah!";
+            }
+        } else {
+            $error = "Username tidak ditemukan!";
+        }
+        mysqli_stmt_close($query_user);
+    }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="id">

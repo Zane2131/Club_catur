@@ -9,39 +9,91 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $confirm_password = trim($_POST['confirm_password'] ?? '');
+    $role = trim($_POST['role'] ?? 'user'); // default ke user
 
     // Validasi sederhana
-    if (empty($user) || empty($username) || empty($password) || empty($confirm_password)) {
+    if (empty($user) || empty($username) || empty($password) || empty($confirm_password) || empty($role)) {
         $error = "Semua kolom wajib diisi.";
     } elseif ($password !== $confirm_password) {
         $error = "Konfirmasi password tidak cocok.";
+    } elseif ($role !== 'user' && $role !== 'admin') {
+        $error = "Role tidak valid.";
     } else {
-        // Cek apakah username sudah digunakan
-        $check = mysqli_prepare($koneksi, "SELECT id FROM users WHERE username = ?");
-        mysqli_stmt_bind_param($check, "s", $username);
-        mysqli_stmt_execute($check);
-        mysqli_stmt_store_result($check);
+        if ($role === 'user') {
+            // Cek apakah username sudah digunakan di users
+            $check = mysqli_prepare($koneksi, "SELECT id FROM users WHERE username = ?");
+            mysqli_stmt_bind_param($check, "s", $username);
+            mysqli_stmt_execute($check);
+            mysqli_stmt_store_result($check);
 
-        if (mysqli_stmt_num_rows($check) > 0) {
-            $error = "Username sudah terdaftar.";
-        } else {
-            // Simpan data baru
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = mysqli_prepare($koneksi, "INSERT INTO users (username, user, password) VALUES (?, ?, ?)");
-            if ($stmt) {
-                mysqli_stmt_bind_param($stmt, "sss", $username, $user, $hashed_password);
-                if (mysqli_stmt_execute($stmt)) {
-                    $success = "Registrasi berhasil. <a href='Login.php'>Login sekarang</a>.";
-                } else {
-                    $error = "Registrasi gagal: " . mysqli_error($koneksi);
-                }
-                mysqli_stmt_close($stmt);
+            if (mysqli_stmt_num_rows($check) > 0) {
+                $error = "Username sudah terdaftar sebagai user.";
             } else {
-                $error = "Query gagal: " . mysqli_error($koneksi);
-            }
-        }
+                // Cek juga di admin
+                $check_admin = mysqli_prepare($koneksi, "SELECT id FROM admin WHERE username = ?");
+                mysqli_stmt_bind_param($check_admin, "s", $username);
+                mysqli_stmt_execute($check_admin);
+                mysqli_stmt_store_result($check_admin);
 
-        mysqli_stmt_close($check);
+                if (mysqli_stmt_num_rows($check_admin) > 0) {
+                    $error = "Username sudah terdaftar sebagai admin.";
+                } else {
+                    // Simpan data baru ke users
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = mysqli_prepare($koneksi, "INSERT INTO users (username, user, password) VALUES (?, ?, ?)");
+                    if ($stmt) {
+                        mysqli_stmt_bind_param($stmt, "sss", $username, $user, $hashed_password);
+                        if (mysqli_stmt_execute($stmt)) {
+                            $success = "Registrasi user berhasil. <a href='Login.php'>Login sekarang</a>.";
+                        } else {
+                            $error = "Registrasi gagal: " . mysqli_error($koneksi);
+                        }
+                        mysqli_stmt_close($stmt);
+                    } else {
+                        $error = "Query gagal: " . mysqli_error($koneksi);
+                    }
+                }
+                mysqli_stmt_close($check_admin);
+            }
+            mysqli_stmt_close($check);
+        } else if ($role === 'admin') {
+            // Cek apakah username sudah digunakan di admin
+            $check = mysqli_prepare($koneksi, "SELECT id FROM admin WHERE username = ?");
+            mysqli_stmt_bind_param($check, "s", $username);
+            mysqli_stmt_execute($check);
+            mysqli_stmt_store_result($check);
+
+            if (mysqli_stmt_num_rows($check) > 0) {
+                $error = "Username sudah terdaftar sebagai admin.";
+            } else {
+                // Cek juga di users
+                $check_user = mysqli_prepare($koneksi, "SELECT id FROM users WHERE username = ?");
+                mysqli_stmt_bind_param($check_user, "s", $username);
+                mysqli_stmt_execute($check_user);
+                mysqli_stmt_store_result($check_user);
+
+                if (mysqli_stmt_num_rows($check_user) > 0) {
+                    $error = "Username sudah terdaftar sebagai user.";
+                } else {
+                    // Simpan data baru ke admin
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = mysqli_prepare($koneksi, "INSERT INTO admin (username, nama_admin, password) VALUES (?, ?, ?)");
+                    if ($stmt) {
+                        mysqli_stmt_bind_param($stmt, "sss", $username, $user, $hashed_password);
+                        if (mysqli_stmt_execute($stmt)) {
+                            $success = "Registrasi admin berhasil. <a href='Login.php'>Login sekarang</a>.";
+                        } else {
+                            $error = "Registrasi gagal: " . mysqli_error($koneksi);
+                        }
+                        mysqli_stmt_close($stmt);
+                    } else {
+                        $error = "Query gagal: " . mysqli_error($koneksi);
+                    }
+                }
+                mysqli_stmt_close($check_user);
+            }
+            mysqli_stmt_close($check);
+        }
     }
 }
 ?>
@@ -115,7 +167,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin-bottom: 6px;
             font-family: 'Montserrat', Arial, sans-serif;
         }
-        input[type="text"], input[type="email"], input[type="password"] {
+        input[type="text"], input[type="email"], input[type="password"], select {
             width: 100%;
             padding: 10px 12px;
             border: 2px solid #222;
@@ -124,7 +176,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: #f8f8f8;
             transition: border 0.2s;
         }
-        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
             border-color: #bfa14a;
             outline: none;
             background: #fffbe6;
@@ -221,6 +273,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <label for="confirm_password">Konfirmasi Password:</label>
             <input type="password" name="confirm_password" id="confirm_password" required>
+
+            <label for="role">Daftar sebagai:</label>
+            <select name="role" id="role" required>
+                <option value="user" selected>Anggota/User</option>
+                <option value="admin">Admin</option>
+            </select>
 
             <button type="submit">Daftar</button>
         </form>
